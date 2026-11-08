@@ -12,7 +12,7 @@ import testesoftware.com.backend.service.FormaPagamentoService;
 import java.util.List;
 
 /**
- * Controller REST para consulta de Formas de Pagamento no PDV (somente leitura - dados pré-cadastrados no banco).
+ * Controller REST para Formas de Pagamento (GET, POST, PUT, DELETE).
  */
 @RestController
 @RequestMapping("/api/formas-pagamento")
@@ -39,4 +39,5 @@ public class FormaPagamentoController {
     public ResponseEntity<FormaPagamento> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(formaPagamentoService.buscarPorId(id));
     }
+
 }

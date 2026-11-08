@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import testesoftware.com.backend.enums.FuncaoFuncionario;
@@ -29,8 +31,7 @@ public class Funcionario {
     @Column(nullable = false, length = 150)
     private String nome;
 
-    @NotBlank(message = "O CPF do funcionário é obrigatório.")
-    @Column(nullable = false, unique = true, length = 14)
+    @Column(unique = true, length = 14)
     private String cpf;
 
     @Column(length = 30)
@@ -40,6 +41,15 @@ public class Funcionario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private FuncaoFuncionario funcao;
+
+    @Email(message = "E-mail inválido.")
+    @Column(unique = true, length = 150)
+    private String email;
+
+    /** Senha (mínimo 4 caracteres); nunca é serializada na resposta da API. */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(length = 100)
+    private String senha;
 
     public Funcionario() {
     }
@@ -99,17 +109,33 @@ public class Funcionario {
         this.funcao = funcao;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Funcionario that = (Funcionario) o;
-        return Objects.equals(cpf, that.cpf);
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(cpf);
+        return Objects.hash(id);
     }
 
     @Override
@@ -118,6 +144,7 @@ public class Funcionario {
                 "id=" + id +
                 ", nome='" + nome + '\'' +
                 ", cpf='" + cpf + '\'' +
+                ", email='" + email + '\'' +
                 ", crf='" + crf + '\'' +
                 ", funcao=" + funcao +
                 '}';

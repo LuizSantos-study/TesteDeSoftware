@@ -4,7 +4,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import testesoftware.com.backend.enums.FuncaoFuncionario;
 import testesoftware.com.backend.enums.ModalidadeIntegracao;
+import testesoftware.com.backend.enums.StatusItemVenda;
 import testesoftware.com.backend.enums.StatusVenda;
+import testesoftware.com.backend.dto.ItemVendaRequest;
+import testesoftware.com.backend.dto.VendaRequest;
 import testesoftware.com.backend.exception.DescontoInvalidoException;
 import testesoftware.com.backend.exception.MedicamentoControladoException;
 import testesoftware.com.backend.exception.VendaFinalizadaException;
@@ -31,7 +34,7 @@ import java.util.stream.Collectors;
  * - Adição e cancelamento de itens da venda;
  * - Aplicação de descontos e bloqueio de valor total negativo;
  * - Bloqueio de alterações em vendas com status FINALIZADA;
- * - Cancelamento de venda;
+ * - Cancelamento lógico de venda e itens (sem exclusão física, para auditoria);
  * - Validação sanitária de medicamentos controlados (SNGPC / ANVISA);
  * - Integração com Gateway de Pagamento (TEF / POS) e SNGPC.
  */
@@ -41,23 +44,28 @@ public class VendaService {
     private final VendaRepository vendaRepository;
     private final GatewayPagamentoClient gatewayPagamentoClient;
     private final SngpcClient sngpcClient;
+    private final ClienteService clienteService;
+    private final FuncionarioService funcionarioService;
+    private final FormaPagamentoService formaPagamentoService;
+    private final ProdutoService produtoService;
 
     public VendaService(VendaRepository vendaRepository,
                         GatewayPagamentoClient gatewayPagamentoClient,
-                        SngpcClient sngpcClient) {
+                        SngpcClient sngpcClient,
+                        ClienteService clienteService,
+                        FuncionarioService funcionarioService,
+                        FormaPagamentoService formaPagamentoService,
+                        ProdutoService produtoService) {
+        this.clienteService = clienteService;
+        this.funcionarioService = funcionarioService;
+        this.formaPagamentoService = formaPagamentoService;
+        this.produtoService = produtoService;
         this.vendaRepository = vendaRepository;
         this.gatewayPagamentoClient = gatewayPagamentoClient;
         this.sngpcClient = sngpcClient;
     }
 
-    // =========================================================================
-    // REGRAS DE NEGÓCIO DE ITEM VENDA E VENDA
-    // =========================================================================
-
-    /**
-     * Regra 1: Calcula automaticamente o subtotal do item (precoUnitario * qtdVendida).
-     * Impede quantidade vendida menor ou igual a zero ou preço negativo.
-     */
+    // Subtotal = preço unitário x quantidade
     public BigDecimal calcularSubtotalItem(ItemVenda item) {
         if (item == null) {
             throw new IllegalArgumentException("O item da venda não pode ser nulo.");
@@ -81,18 +89,10 @@ public class VendaService {
         return subtotal;
     }
 
-    /**
-     * Inicia uma nova venda pendente com dados básicos.
-     */
     public Venda iniciarVenda(Cliente cliente, Funcionario funcionario, FormaPagamento formaPagamento) {
         return new Venda(null, cliente, funcionario, formaPagamento);
     }
 
-    /**
-     * Adiciona um produto à venda instanciando um ItemVenda com subtotal calculado
-     * e recalculando o valor total da venda.
-     * Bloqueia a operação caso a venda já esteja FINALIZADA.
-     */
     public ItemVenda adicionarItem(Venda venda, Produto produto, int quantidade) {
         validarVendaNaoFinalizada(venda);
 
@@ -116,10 +116,6 @@ public class VendaService {
         return item;
     }
 
-    /**
-     * Adiciona um objeto ItemVenda já instanciado à venda.
-     * Bloqueia a operação caso a venda já esteja FINALIZADA.
-     */
     public void adicionarItem(Venda venda, ItemVenda item) {
         validarVendaNaoFinalizada(venda);
 
@@ -143,24 +139,19 @@ public class VendaService {
         calcularValorTotal(venda);
     }
 
-    /**
-     * Cancela / remove um item da venda e recalcula o valor total.
-     * Bloqueia o cancelamento caso a venda já tenha sido finalizada.
-     */
     public boolean cancelarItem(Venda venda, ItemVenda item) {
         validarVendaNaoFinalizada(venda);
+        validarVendaNaoCancelada(venda);
 
-        boolean removido = venda.getItens().remove(item);
-        if (removido) {
-            calcularValorTotal(venda);
+        if (item == null || !venda.getItens().contains(item) || !item.isAtivo()) {
+            return false;
         }
-        return removido;
+        // Cancelamento lógico: o item permanece para auditoria
+        item.setStatus(StatusItemVenda.CANCELADO);
+        calcularValorTotal(venda);
+        return true;
     }
 
-    /**
-     * Cancela um item da venda localizando-o pelo ID do item ou pelo número sequencial do item no carrinho.
-     * Bloqueia o cancelamento caso a venda já esteja FINALIZADA.
-     */
     @Transactional
     public Venda cancelarItemPorId(Long vendaId, Long itemId) {
         Venda venda = buscarPorId(vendaId);
@@ -168,24 +159,21 @@ public class VendaService {
 
         ItemVenda itemParaCancelar = venda.getItens().stream()
                 .filter(i -> itemId.equals(i.getId())
-                        || (i.getNumeroItem() != null && itemId.equals(i.getNumeroItem().longValue())))
+                        || (i.isAtivo() && i.getNumeroItem() != null && itemId.equals(i.getNumeroItem().longValue())))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Item não encontrado na venda com identificador: " + itemId));
 
-        cancelarItem(venda, itemParaCancelar);
+        if (!cancelarItem(venda, itemParaCancelar)) {
+            throw new IllegalStateException("O item " + itemId + " já está cancelado.");
+        }
         return vendaRepository.save(venda);
     }
 
-    /**
-     * Alias de compatibilidade para cancelarItem.
-     */
+    // Alias de compatibilidade para cancelarItem
     public boolean removerItem(Venda venda, ItemVenda item) {
         return cancelarItem(venda, item);
     }
 
-    /**
-     * Calcula o somatório dos subtotais de todos os itens da venda.
-     */
     public BigDecimal calcularSubtotalItens(Venda venda) {
         if (venda == null || venda.getItens() == null) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -193,6 +181,7 @@ public class VendaService {
 
         return venda.getItens().stream()
                 .filter(Objects::nonNull)
+                .filter(ItemVenda::isAtivo) // itens CANCELADO ficam registrados, mas não entram no total
                 .map(item -> {
                     if (item.getSubtotal() == null || item.getSubtotal().compareTo(BigDecimal.ZERO) == 0) {
                         return calcularSubtotalItem(item);
@@ -203,10 +192,7 @@ public class VendaService {
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-    /**
-     * Regra 4: Aplica um valor de desconto à venda.
-     * Impede descontos negativos ou que excedam o subtotal dos itens (impedindo valor total negativo).
-     */
+    // Desconto não pode ser negativo nem maior que o subtotal
     public BigDecimal aplicarDesconto(Venda venda, BigDecimal novoDesconto) {
         validarVendaNaoFinalizada(venda);
 
@@ -230,10 +216,6 @@ public class VendaService {
         return calcularValorTotal(venda);
     }
 
-    /**
-     * Recalcula o valor total da venda considerando o subtotal dos itens e o desconto.
-     * Garante que o valor total nunca seja negativo.
-     */
     public BigDecimal calcularValorTotal(Venda venda) {
         BigDecimal subtotal = calcularSubtotalItens(venda);
         BigDecimal desc = venda.getDesconto() != null ? venda.getDesconto() : BigDecimal.ZERO;
@@ -253,24 +235,18 @@ public class VendaService {
         return totalFormatado;
     }
 
-    /**
-     * Verifica se existe algum item controlado (SNGPC) na venda.
-     */
     public boolean possuiMedicamentoControlado(Venda venda) {
         if (venda == null || venda.getItens() == null) {
             return false;
         }
         return venda.getItens().stream()
+                .filter(ItemVenda::isAtivo)
                 .map(ItemVenda::getProduto)
                 .filter(Objects::nonNull)
                 .anyMatch(Produto::isSngpc);
     }
 
-    /**
-     * Regra 2: Valida os requisitos sanitários para venda de medicamentos controlados (SNGPC):
-     * - Presença do número da receita médica;
-     * - Validação por profissional farmacêutico (funcionário da venda ou farmacêutico responsável).
-     */
+    // Controlados exigem receita e farmacêutico
     public void validarMedicamentoControlado(Venda venda) {
         if (possuiMedicamentoControlado(venda)) {
             if (venda.getNumeroReceita() == null || venda.getNumeroReceita().trim().isEmpty()) {
@@ -293,9 +269,7 @@ public class VendaService {
         }
     }
 
-    /**
-     * Regra 3: Bloqueia alterações caso a venda já esteja com status FINALIZADA.
-     */
+    // Venda finalizada não pode ser alterada
     public void validarVendaNaoFinalizada(Venda venda) {
         if (venda == null) {
             throw new IllegalArgumentException("A venda não pode ser nula.");
@@ -305,18 +279,23 @@ public class VendaService {
         }
     }
 
-    /**
-     * Valida todas as regras internas e altera o status da venda para FINALIZADA.
-     */
+    // Bloqueia alterações em vendas já canceladas
+    public void validarVendaNaoCancelada(Venda venda) {
+        if (venda != null && venda.getStatus() == StatusVenda.CANCELADO) {
+            throw new IllegalStateException("Operação não permitida: a venda está cancelada.");
+        }
+    }
+
+    // Valida e marca a venda como FINALIZADA
     public void finalizarVenda(Venda venda) {
         validarVendaNaoFinalizada(venda);
 
-        if (venda.getStatus() == StatusVenda.CANCELADA) {
+        if (venda.getStatus() == StatusVenda.CANCELADO) {
             throw new IllegalStateException("Não é possível finalizar uma venda que já está cancelada.");
         }
 
-        if (venda.getItens() == null || venda.getItens().isEmpty()) {
-            throw new IllegalStateException("Não é possível finalizar uma venda sem itens.");
+        if (venda.getItens() == null || venda.getItens().stream().noneMatch(ItemVenda::isAtivo)) {
+            throw new IllegalStateException("Não é possível finalizar uma venda sem itens ativos.");
         }
 
         validarMedicamentoControlado(venda);
@@ -325,20 +304,15 @@ public class VendaService {
         venda.setStatus(StatusVenda.FINALIZADA);
     }
 
-    /**
-     * Cancela uma venda que não esteja finalizada nem já cancelada.
-     */
     public void cancelarVenda(Venda venda) {
         validarVendaNaoFinalizada(venda);
-        if (venda.getStatus() == StatusVenda.CANCELADA) {
+        if (venda.getStatus() == StatusVenda.CANCELADO) {
             throw new IllegalStateException("A venda já está cancelada.");
         }
-        venda.setStatus(StatusVenda.CANCELADA);
+        // Venda e itens continuam no banco
+        venda.setStatus(StatusVenda.CANCELADO);
     }
 
-    /**
-     * Cancela uma venda pelo seu ID e persiste a alteração no banco.
-     */
     @Transactional
     public Venda cancelarVendaPorId(Long vendaId) {
         Venda venda = buscarPorId(vendaId);
@@ -346,9 +320,6 @@ public class VendaService {
         return vendaRepository.save(venda);
     }
 
-    /**
-     * Verifica se a forma de pagamento exige integração eletrônica (TEF ou POS).
-     */
     public boolean requerIntegracaoEletronica(FormaPagamento formaPagamento) {
         if (formaPagamento == null || formaPagamento.getTipoPagamento() == null) {
             return false;
@@ -357,14 +328,6 @@ public class VendaService {
                 || formaPagamento.getTipoPagamento() == ModalidadeIntegracao.POS;
     }
 
-    /**
-     * Processa a finalização completa da venda com integrações externas e persistência:
-     * 1. Validação de venda não finalizada e presença de itens;
-     * 2. Consulta e emissão de notificação no SNGPC (se contiver controlados);
-     * 3. Autorização de pagamento via TEF/POS (se modalidade eletrônica);
-     * 4. Transição de status da venda para FINALIZADA;
-     * 5. Persistência da venda no repositório JPA.
-     */
     @Transactional
     public Venda processarFinalizacaoVenda(Venda venda) {
         validarVendaNaoFinalizada(venda);
@@ -385,7 +348,7 @@ public class VendaService {
                     : (venda.getFuncionario() != null ? venda.getFuncionario().getCrf() : "");
 
             List<ItemVenda> itensControlados = venda.getItens().stream()
-                    .filter(item -> item.getProduto() != null && item.getProduto().isSngpc())
+                    .filter(item -> item.isAtivo() && item.getProduto() != null && item.getProduto().isSngpc())
                     .collect(Collectors.toList());
 
             sngpcClient.emitirNotificacaoSNGPC(venda.getNumeroReceita(), crfFarmaceutico, itensControlados);
@@ -406,10 +369,6 @@ public class VendaService {
         finalizarVenda(venda);
         return vendaRepository.save(venda);
     }
-
-    // =========================================================================
-    // OPERAÇÕES DE PERSISTÊNCIA / CRUD NO REPOSITÓRIO JPA
-    // =========================================================================
 
     public List<Venda> listarTodas() {
         return vendaRepository.findAll();
@@ -457,6 +416,34 @@ public class VendaService {
     }
 
     @Transactional
+    public Venda criar(VendaRequest request) {
+        return criar(montarVenda(request));
+    }
+
+    @Transactional
+    public Venda atualizar(Long id, VendaRequest request) {
+        return atualizar(id, montarVenda(request));
+    }
+
+    private Venda montarVenda(VendaRequest request) {
+        Venda venda = new Venda();
+        venda.setCliente(request.clienteId() != null ? clienteService.buscarPorId(request.clienteId()) : null);
+        // Entidades relacionadas são carregadas do banco pelos IDs
+        venda.setFuncionario(funcionarioService.buscarPorId(request.funcionarioId()));
+        venda.setFormaPagamento(formaPagamentoService.buscarPorId(request.formaPagamentoId()));
+        venda.setNumeroReceita(request.numeroReceita());
+        venda.setFarmaceuticoResponsavel(request.farmaceuticoResponsavelId() != null
+                ? funcionarioService.buscarPorId(request.farmaceuticoResponsavelId()) : null);
+        venda.setDesconto(request.desconto() != null ? request.desconto() : BigDecimal.ZERO);
+
+        for (ItemVendaRequest itemReq : request.itens()) {
+            ItemVenda item = new ItemVenda(produtoService.buscarPorId(itemReq.produtoId()), itemReq.qtdVendida());
+            venda.getItens().add(item);
+        }
+        return venda;
+    }
+
+    @Transactional
     public Venda atualizar(Long id, Venda dadosAtualizados) {
         Venda existente = buscarPorId(id);
         validarVendaNaoFinalizada(existente);
@@ -468,37 +455,68 @@ public class VendaService {
         existente.setFarmaceuticoResponsavel(dadosAtualizados.getFarmaceuticoResponsavel());
 
         if (dadosAtualizados.getItens() != null) {
-            existente.getItens().clear();
-            for (int i = 0; i < dadosAtualizados.getItens().size(); i++) {
-                ItemVenda item = dadosAtualizados.getItens().get(i);
-                item.setVenda(existente);
-                item.setNumeroItem(i + 1);
-                calcularSubtotalItem(item);
-                existente.getItens().add(item);
-            }
+            sincronizarItens(existente, dadosAtualizados.getItens());
         }
 
         aplicarDesconto(existente, dadosAtualizados.getDesconto());
 
         if (dadosAtualizados.getStatus() == StatusVenda.FINALIZADA) {
             return processarFinalizacaoVenda(existente);
-        } else if (dadosAtualizados.getStatus() == StatusVenda.CANCELADA) {
+        } else if (dadosAtualizados.getStatus() == StatusVenda.CANCELADO) {
             cancelarVenda(existente);
         }
 
         return vendaRepository.save(existente);
     }
 
+    private void sincronizarItens(Venda venda, List<ItemVenda> recebidos) {
+        List<ItemVenda> existentes = venda.getItens();
+        java.util.Set<ItemVenda> mantidos = new java.util.HashSet<>();
+        int proximoNumero = existentes.stream()
+                .map(ItemVenda::getNumeroItem).filter(Objects::nonNull)
+                .mapToInt(Integer::intValue).max().orElse(0) + 1;
+
+        for (ItemVenda recebido : recebidos) {
+            // Sem id no corpo: reaproveita o item ativo do mesmo produto (evita duplicar itens no PUT)
+            ItemVenda atual = existentes.stream()
+                    .filter(i -> !mantidos.contains(i))
+                    .filter(i -> recebido.getId() != null
+                            ? recebido.getId().equals(i.getId())
+                            : i.isAtivo() && i.getProduto() != null && recebido.getProduto() != null
+                                && Objects.equals(i.getProduto().getId(), recebido.getProduto().getId()))
+                    .findFirst().orElse(null);
+
+            if (atual == null) {
+                recebido.setId(null);
+                recebido.setVenda(venda);
+                recebido.setNumeroItem(proximoNumero++);
+                if (recebido.getStatus() == null) {
+                    recebido.setStatus(StatusItemVenda.ATIVO);
+                }
+                calcularSubtotalItem(recebido);
+                existentes.add(recebido);
+                mantidos.add(recebido);
+            } else {
+                atual.setProduto(recebido.getProduto());
+                atual.setQtdVendida(recebido.getQtdVendida());
+                atual.setPrecoUnitario(recebido.getPrecoUnitario());
+                atual.setStatus(recebido.getStatus());
+                calcularSubtotalItem(atual);
+                mantidos.add(atual);
+            }
+        }
+
+        // Itens ausentes da lista são cancelados, nunca excluídos
+        for (ItemVenda existente : existentes) {
+            if (!mantidos.contains(existente)) {
+                existente.setStatus(StatusItemVenda.CANCELADO);
+            }
+        }
+    }
+
     @Transactional
     public Venda salvar(Venda venda) {
         calcularValorTotal(venda);
         return vendaRepository.save(venda);
-    }
-
-    @Transactional
-    public void deletar(Long id) {
-        Venda existente = buscarPorId(id);
-        validarVendaNaoFinalizada(existente);
-        vendaRepository.delete(existente);
     }
 }

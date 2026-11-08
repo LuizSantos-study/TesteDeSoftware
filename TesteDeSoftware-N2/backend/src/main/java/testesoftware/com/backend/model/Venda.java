@@ -47,7 +47,7 @@ public class Venda {
     @JoinColumn(name = "forma_pagamento_id")
     private FormaPagamento formaPagamento;
 
-    @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "venda", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
     private List<ItemVenda> itens = new ArrayList<>();
 
     @Column(name = "valor_total", nullable = false, precision = 10, scale = 2)

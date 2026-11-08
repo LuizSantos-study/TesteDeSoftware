@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositório JPA para persistência e consulta de Funcionários.
+ * Repositório JPA para persistência, consulta e autenticação de Funcionários.
  */
 @Repository
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
@@ -17,6 +17,10 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     Optional<Funcionario> findByCpf(String cpf);
 
     boolean existsByCpf(String cpf);
+
+    Optional<Funcionario> findByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
 
     List<Funcionario> findByFuncao(FuncaoFuncionario funcao);
 }

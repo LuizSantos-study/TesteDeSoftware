@@ -3,6 +3,11 @@
 -- Execute este script no DBeaver após o Spring Boot criar as tabelas (ddl-auto=update)
 -- ============================================================================
 
+-- Entidade Usuario descontinuada: o login agora é feito diretamente por Funcionario
+DROP TABLE IF EXISTS usuarios;
+-- CPF deixou de ser obrigatório no cadastro de funcionário (bases criadas antes da refatoração)
+ALTER TABLE funcionarios ALTER COLUMN cpf DROP NOT NULL;
+
 -- 1. PRODUTOS DA FARMÁCIA (Controlados SNGPC, Referência, Genéricos, Similares e Perfumaria)
 INSERT INTO produtos (id, nome, principio_ativo, tipo, sngpc, preco) VALUES
 (1, 'Rivotril 2mg (30 Comprimidos)', 'Clonazepam', 'REFERENCIA', true, 32.50),
@@ -29,13 +34,20 @@ INSERT INTO formas_pagamento (id, descricao, tipo, tipo_pagamento, ativo, permit
 (6, 'Cartão de Débito (POS Maquininha)', 'CARTAO_DEBITO', 'POS', true, false)
 ON CONFLICT (id) DO NOTHING;
 
--- 3. FUNCIONÁRIOS DA FARMÁCIA
-INSERT INTO funcionarios (id, nome, cpf, crf, funcao) VALUES
-(1, 'Lucas Lima', '444.555.666-77', NULL, 'OPERADOR_CAIXA'),
-(2, 'Dra. Beatriz Santos', '555.666.777-88', 'CRF-GO 98765', 'FARMACEUTICO'),
-(3, 'Marcos Oliveira', '666.777.888-99', NULL, 'GERENTE'),
-(4, 'Dr. Rafael Costa', '777.888.999-00', 'CRF-GO 54321', 'FARMACEUTICO')
+-- 3. FUNCIONÁRIOS DA FARMÁCIA (também são os usuários de login: e-mail + senha, mínimo 4 caracteres)
+-- Senhas de exemplo: operador/farmacêuticos = 123456 | gerente = admin123
+INSERT INTO funcionarios (id, nome, cpf, crf, funcao, email, senha) VALUES
+(1, 'Lucas Lima', '444.555.666-77', NULL, 'OPERADOR_CAIXA', 'lucas.caixa@farmacia.com', '123456'),
+(2, 'Dra. Beatriz Santos', '555.666.777-88', 'CRF-GO 98765', 'FARMACEUTICO', 'beatriz.farma@farmacia.com', '123456'),
+(3, 'Marcos Oliveira', '666.777.888-99', NULL, 'GERENTE', 'marcos.gerente@farmacia.com', 'admin123'),
+(4, 'Dr. Rafael Costa', '777.888.999-00', 'CRF-GO 54321', 'FARMACEUTICO', 'rafael.farma@farmacia.com', '123456')
 ON CONFLICT (id) DO NOTHING;
+
+-- Bases já existentes: completa e-mail/senha dos funcionários que ainda não os possuem
+UPDATE funcionarios SET email = 'lucas.caixa@farmacia.com', senha = '123456' WHERE id = 1 AND email IS NULL;
+UPDATE funcionarios SET email = 'beatriz.farma@farmacia.com', senha = '123456' WHERE id = 2 AND email IS NULL;
+UPDATE funcionarios SET email = 'marcos.gerente@farmacia.com', senha = 'admin123' WHERE id = 3 AND email IS NULL;
+UPDATE funcionarios SET email = 'rafael.farma@farmacia.com', senha = '123456' WHERE id = 4 AND email IS NULL;
 
 -- 4. CLIENTES CADASTRADOS
 INSERT INTO clientes (id, nome, cpf, data_nasc, plano) VALUES
@@ -44,16 +56,8 @@ INSERT INTO clientes (id, nome, cpf, data_nasc, plano) VALUES
 (3, 'Carlos Eduardo', '333.444.555-66', '2001-01-10', 'NENHUM')
 ON CONFLICT (id) DO NOTHING;
 
--- 5. USUÁRIOS DE ACESSO AO PDV (LOGIN)
-INSERT INTO usuarios (id, nome, login, email, senha, perfil, ativo, funcionario_id) VALUES
-(1, 'Lucas Lima (Caixa)', 'caixa', 'lucas.caixa@farmacia.com', '123456', 'OPERADOR_CAIXA', true, 1),
-(2, 'Dra. Beatriz Santos (Farmacêutica)', 'farmaceutico', 'beatriz.farma@farmacia.com', '123456', 'FARMACEUTICO', true, 2),
-(3, 'Marcos Oliveira (Gerente)', 'admin', 'marcos.gerente@farmacia.com', 'admin123', 'GERENTE', true, 3)
-ON CONFLICT (id) DO NOTHING;
-
 -- Ajuste das sequências (auto-incremento) do PostgreSQL após os inserts manuais
 SELECT setval(pg_get_serial_sequence('produtos', 'id'), COALESCE((SELECT MAX(id) FROM produtos), 1), true);
 SELECT setval(pg_get_serial_sequence('formas_pagamento', 'id'), COALESCE((SELECT MAX(id) FROM formas_pagamento), 1), true);
 SELECT setval(pg_get_serial_sequence('funcionarios', 'id'), COALESCE((SELECT MAX(id) FROM funcionarios), 1), true);
 SELECT setval(pg_get_serial_sequence('clientes', 'id'), COALESCE((SELECT MAX(id) FROM clientes), 1), true);
-SELECT setval(pg_get_serial_sequence('usuarios', 'id'), COALESCE((SELECT MAX(id) FROM usuarios), 1), true);

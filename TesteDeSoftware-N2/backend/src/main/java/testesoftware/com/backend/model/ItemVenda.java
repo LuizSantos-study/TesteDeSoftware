@@ -3,6 +3,8 @@ package testesoftware.com.backend.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,6 +15,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+
+import testesoftware.com.backend.enums.StatusItemVenda;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -52,6 +56,10 @@ public class ItemVenda {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'ATIVO'")
+    private StatusItemVenda status = StatusItemVenda.ATIVO;
 
     public ItemVenda() {
         this.qtdVendida = 1;
@@ -139,6 +147,19 @@ public class ItemVenda {
         this.subtotal = subtotal;
     }
 
+    public StatusItemVenda getStatus() {
+        return status;
+    }
+
+    public void setStatus(StatusItemVenda status) {
+        this.status = status != null ? status : StatusItemVenda.ATIVO;
+    }
+
+    @JsonIgnore
+    public boolean isAtivo() {
+        return status == StatusItemVenda.ATIVO;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -163,6 +184,7 @@ public class ItemVenda {
                 ", qtdVendida=" + qtdVendida +
                 ", precoUnitario=" + precoUnitario +
                 ", subtotal=" + subtotal +
+                ", status=" + status +
                 '}';
     }
 }

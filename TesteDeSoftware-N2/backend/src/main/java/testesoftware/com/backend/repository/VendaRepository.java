@@ -1,17 +1,25 @@
 package testesoftware.com.backend.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.Repository;
 import testesoftware.com.backend.enums.StatusVenda;
 import testesoftware.com.backend.model.Venda;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Repositório JPA para persistência e consulta de Vendas.
+ * Repositório de Vendas. Estende apenas {@link Repository} (e não JpaRepository)
+ * de propósito: não expõe nenhum método de exclusão física, pois vendas são canceladas
+ * via status para fins de auditoria.
  */
-@Repository
-public interface VendaRepository extends JpaRepository<Venda, Long> {
+@org.springframework.stereotype.Repository
+public interface VendaRepository extends Repository<Venda, Long> {
+
+    Venda save(Venda venda);
+
+    Optional<Venda> findById(Long id);
+
+    List<Venda> findAll();
 
     List<Venda> findByStatus(StatusVenda status);
 

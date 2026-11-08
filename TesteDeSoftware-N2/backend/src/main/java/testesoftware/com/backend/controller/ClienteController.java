@@ -12,7 +12,7 @@ import testesoftware.com.backend.service.ClienteService;
 import java.util.List;
 
 /**
- * Controller REST para consulta de Clientes no PDV (somente leitura - dados pré-cadastrados no banco).
+ * Controller REST para Clientes (GET, POST, PUT, DELETE).
  */
 @RestController
 @RequestMapping("/api/clientes")
@@ -39,4 +39,5 @@ public class ClienteController {
     public ResponseEntity<Cliente> buscarPorCpf(@PathVariable String cpf) {
         return ResponseEntity.ok(clienteService.buscarPorCpf(cpf));
     }
+
 }

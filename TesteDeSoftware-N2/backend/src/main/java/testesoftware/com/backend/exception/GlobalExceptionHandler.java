@@ -41,9 +41,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> tratarIllegalState(IllegalStateException ex) {
         String mensagem = ex.getMessage() != null ? ex.getMessage() : "Operação não permitida.";
-        if (mensagem.toLowerCase().contains("inativo")) {
-            return construirRespostaErro(HttpStatus.FORBIDDEN, "UsuarioInativo", mensagem);
-        }
         return construirRespostaErro(HttpStatus.BAD_REQUEST, "EstadoInvalido", mensagem);
     }
 

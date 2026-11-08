@@ -6,7 +6,7 @@ package testesoftware.com.backend.enums;
 public enum StatusVenda {
     PENDENTE("Pendente"),
     FINALIZADA("Finalizada"),
-    CANCELADA("Cancelada");
+    CANCELADO("Cancelado");
 
     private final String descricao;
 
