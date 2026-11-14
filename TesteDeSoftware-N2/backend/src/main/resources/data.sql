@@ -61,3 +61,9 @@ SELECT setval(pg_get_serial_sequence('produtos', 'id'), COALESCE((SELECT MAX(id)
 SELECT setval(pg_get_serial_sequence('formas_pagamento', 'id'), COALESCE((SELECT MAX(id) FROM formas_pagamento), 1), true);
 SELECT setval(pg_get_serial_sequence('funcionarios', 'id'), COALESCE((SELECT MAX(id) FROM funcionarios), 1), true);
 SELECT setval(pg_get_serial_sequence('clientes', 'id'), COALESCE((SELECT MAX(id) FROM clientes), 1), true);
+
+-- Correção de nomeclatura dos enums Status Venda
+ALTER TABLE vendas DROP CONSTRAINT IF EXISTS vendas_status_check;
+UPDATE vendas SET status = 'CANCELADO' WHERE status = 'CANCELADA'; 
+ALTER TABLE vendas ADD CONSTRAINT vendas_status_check
+    CHECK (status IN ('PENDENTE', 'FINALIZADA', 'CANCELADO'));

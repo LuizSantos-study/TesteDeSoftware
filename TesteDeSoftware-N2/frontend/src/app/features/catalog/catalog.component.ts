@@ -41,8 +41,18 @@ export class CatalogComponent implements OnInit {
     });
   }
 
-  get filteredProducts(): Produto[] { const term = this.searchProduct.toLowerCase().trim(); return this.products.filter((item) => !term || `${item.nome} ${item.principioAtivo}`.toLowerCase().includes(term)); }
-  get filteredCustomers(): Cliente[] { const term = this.searchCustomer.toLowerCase().trim(); return this.customers.filter((item) => !term || `${item.nome} ${item.cpf}`.toLowerCase().includes(term)); }
+  get filteredProducts(): Produto[] {
+    const term = this.searchProduct.toLowerCase().trim();
+    return this.products.filter(
+      (item) => !term || `${item.nome} ${item.principioAtivo}`.toLowerCase().includes(term),
+    );
+  }
+  get filteredCustomers(): Cliente[] {
+    const term = this.searchCustomer.toLowerCase().trim();
+    return this.customers.filter(
+      (item) => !term || `${item.nome} ${item.cpf}`.toLowerCase().includes(term),
+    );
+  }
   private showError = (error: Error): void => {
     this.error = error.message;
     this.loading = false;

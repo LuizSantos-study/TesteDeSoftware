@@ -23,7 +23,9 @@ export class SalesComponent implements OnInit {
     private readonly changeDetector: ChangeDetectorRef,
   ) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+  }
   load(): void {
     this.saleService.listar().subscribe({
       next: (items) => {
@@ -38,7 +40,11 @@ export class SalesComponent implements OnInit {
       },
     });
   }
-  get filteredSales(): Venda[] { return this.filter === 'TODAS' ? this.sales : this.sales.filter((sale) => sale.status === this.filter); }
+  get filteredSales(): Venda[] {
+    return this.filter === 'TODAS'
+      ? this.sales
+      : this.sales.filter((sale) => sale.status === this.filter);
+  }
 
   finalizeSale(sale: Venda): void {
     this.runStatusAction(sale, 'finalize');
@@ -64,9 +70,10 @@ export class SalesComponent implements OnInit {
   private runStatusAction(sale: Venda, action: 'finalize' | 'cancel'): void {
     this.processingSaleId = sale.id;
     this.error = '';
-    const request = action === 'finalize'
-      ? this.saleService.finalizar(sale.id)
-      : this.saleService.cancelar(sale.id);
+    const request =
+      action === 'finalize'
+        ? this.saleService.finalizar(sale.id)
+        : this.saleService.cancelar(sale.id);
 
     request.subscribe({
       next: (updatedSale) => {

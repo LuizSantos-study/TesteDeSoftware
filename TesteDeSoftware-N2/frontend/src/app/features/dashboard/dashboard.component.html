@@ -1,3 +1,16 @@
-<header class="page-header"><div><p class="eyebrow">{{ today | date:'EEEE, d MMMM' }}</p><h1>Olá, {{ auth.currentUser()?.nome?.split(' ')?.[0] }}.</h1><p class="subtitle">O que vamos organizar hoje?</p></div><a class="primary-button compact" routerLink="/app/pdv">+ Nova venda</a></header>
-<section class="welcome-band"><div><p class="eyebrow">Balcão pronto</p><h2>Atendimento com menos atrito.</h2><p>Comece uma venda, encontre um produto ou acompanhe o movimento do dia.</p></div><div class="band-number">01</div></section>
+<header class="page-header">
+  <div>
+    <p class="eyebrow">{{ today | date:'EEEE, d MMMM' }}</p>
+    <h1>Olá, {{ auth.currentUser()?.nome?.split(' ')?.[0] }}.</h1>
+    <p class="subtitle">O que vamos organizar hoje?</p>
+  </div><a class="primary-button compact" routerLink="/app/pdv">+ Nova venda</a>
+</header>
+<section class="welcome-band">
+  <div>
+    <p class="eyebrow">Balcão pronto</p>
+    <h2>Atendimento com menos atrito.</h2>
+    <p>Comece uma venda, encontre um produto ou acompanhe o movimento do dia.</p>
+  </div>
+  <div class="band-number">01</div>
+</section>
 <section class="quick-grid"><a routerLink="/app/pdv" class="quick-card featured"><span class="card-label">Operação</span><strong>Abrir o PDV</strong><span>Iniciar uma nova venda →</span></a><a routerLink="/app/catalogo" class="quick-card"><span class="card-label">Consulta</span><strong>Catálogo</strong><span>Produtos e clientes →</span></a><a routerLink="/app/vendas" class="quick-card"><span class="card-label">Acompanhamento</span><strong>Histórico</strong><span>Ver vendas recentes →</span></a></section>

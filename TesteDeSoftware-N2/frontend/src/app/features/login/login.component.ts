@@ -34,8 +34,7 @@ export class LoginComponent {
   private readonly funcionarioService = inject(FuncionarioService);
   private readonly router = inject(Router);
 
-  constructor() {
-  }
+  constructor() {}
 
   submit(): void {
     if (this.form.invalid) {
@@ -46,7 +45,10 @@ export class LoginComponent {
     this.error = '';
     this.auth.login(this.form.getRawValue()).subscribe({
       next: () => this.router.navigate(['/app/dashboard']),
-      error: (error: Error) => { this.error = error.message; this.submitting = false; },
+      error: (error: Error) => {
+        this.error = error.message;
+        this.submitting = false;
+      },
     });
   }
 
@@ -62,9 +64,18 @@ export class LoginComponent {
     }
     this.registering = true;
     this.error = '';
-    this.funcionarioService.cadastrar({ ...value, cpf: value.cpf || undefined, crf: value.crf || undefined }).subscribe({
-      next: () => { this.success = 'Cadastro realizado. Agora entre com seu e-mail e senha.'; this.registering = false; this.registration.reset({ cargo: 'OPERADOR_CAIXA' }); },
-      error: (error: Error) => { this.error = error.message; this.registering = false; },
-    });
+    this.funcionarioService
+      .cadastrar({ ...value, cpf: value.cpf || undefined, crf: value.crf || undefined })
+      .subscribe({
+        next: () => {
+          this.success = 'Cadastro realizado. Agora entre com seu e-mail e senha.';
+          this.registering = false;
+          this.registration.reset({ cargo: 'OPERADOR_CAIXA' });
+        },
+        error: (error: Error) => {
+          this.error = error.message;
+          this.registering = false;
+        },
+      });
   }
 }

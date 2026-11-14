@@ -27,14 +27,25 @@ export class RegisterComponent {
   private readonly router = inject(Router);
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     const value = this.form.getRawValue();
-    if (value.cargo === 'FARMACEUTICO' && !value.crf.trim()) { this.error = 'Informe o CRF para cadastrar um farmacêutico.'; return; }
+    if (value.cargo === 'FARMACEUTICO' && !value.crf.trim()) {
+      this.error = 'Informe o CRF para cadastrar um farmacêutico.';
+      return;
+    }
     this.submitting = true;
     this.error = '';
-    this.funcionarioService.cadastrar({ ...value, cpf: value.cpf || undefined, crf: value.crf || undefined }).subscribe({
-      next: () => this.router.navigate(['/login'], { queryParams: { cadastrado: '1' } }),
-      error: (error: Error) => { this.error = error.message; this.submitting = false; },
-    });
+    this.funcionarioService
+      .cadastrar({ ...value, cpf: value.cpf || undefined, crf: value.crf || undefined })
+      .subscribe({
+        next: () => this.router.navigate(['/login'], { queryParams: { cadastrado: '1' } }),
+        error: (error: Error) => {
+          this.error = error.message;
+          this.submitting = false;
+        },
+      });
   }
 }

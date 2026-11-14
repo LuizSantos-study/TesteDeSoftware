@@ -9,20 +9,20 @@ import { CatalogComponent } from './features/catalog/catalog.component';
 import { SalesComponent } from './features/sales/sales.component';
 
 export const routes: Routes = [
-	{ path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
-	{ path: 'login', component: LoginComponent },
-	{ path: 'cadastro', component: RegisterComponent },
-	{
-		path: 'app',
-		component: ShellComponent,
-		canActivate: [authGuard],
-		children: [
-			{ path: 'dashboard', component: DashboardComponent },
-			{ path: 'pdv', component: PdvComponent },
-			{ path: 'catalogo', component: CatalogComponent },
-			{ path: 'vendas', component: SalesComponent },
-			{ path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-		],
-	},
-	{ path: '**', redirectTo: 'app/dashboard' },
+  { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
+  { path: 'login', component: LoginComponent },
+  { path: 'cadastro', component: RegisterComponent },
+  {
+    path: 'app',
+    component: ShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'pdv', component: PdvComponent },
+      { path: 'catalogo', component: CatalogComponent },
+      { path: 'vendas', component: SalesComponent },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+    ],
+  },
+  { path: '**', redirectTo: 'app/dashboard' },
 ];

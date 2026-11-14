@@ -3,10 +3,20 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CatalogService } from '../../core/catalog.service';
-import { Cliente, FormaPagamento, Funcionario, Produto, Venda, VendaRequest } from '../../core/models';
+import {
+  Cliente,
+  FormaPagamento,
+  Funcionario,
+  Produto,
+  Venda,
+  VendaRequest,
+} from '../../core/models';
 import { VendaService } from '../../core/venda.service';
 
-interface CartItem { product: Produto; quantity: number; }
+interface CartItem {
+  product: Produto;
+  quantity: number;
+}
 
 @Component({
   selector: 'app-pdv',
@@ -33,6 +43,9 @@ export class PdvComponent implements OnInit {
   message = '';
   error = '';
 
+  // Controle do modal da venda recém-criada
+  createdSaleModal: Venda | null = null;
+
   constructor(
     private readonly catalog: CatalogService,
     private readonly sales: VendaService,
@@ -46,7 +59,6 @@ export class PdvComponent implements OnInit {
 
     this.catalog.produtos().subscribe({
       next: (items) => {
-        console.info('[PDV] Produtos recebidos:', items.length, items);
         this.products = items;
         this.loading = false;
         this.changeDetector.detectChanges();
@@ -55,7 +67,6 @@ export class PdvComponent implements OnInit {
     });
     this.catalog.clientes().subscribe({
       next: (items) => {
-        console.info('[PDV] Clientes recebidos:', items.length, items);
         this.customers = items;
         this.changeDetector.detectChanges();
       },
@@ -63,7 +74,6 @@ export class PdvComponent implements OnInit {
     });
     this.catalog.formasPagamentoAtivas().subscribe({
       next: (items) => {
-        console.info('[PDV] Formas de pagamento recebidas:', items.length, items);
         this.payments = items;
         this.changeDetector.detectChanges();
       },
@@ -71,7 +81,6 @@ export class PdvComponent implements OnInit {
     });
     this.catalog.farmaceuticos().subscribe({
       next: (items) => {
-        console.info('[PDV] Farmacêuticos recebidos:', items.length, items);
         this.pharmacists = items;
         this.changeDetector.detectChanges();
         console.groupEnd();
@@ -81,12 +90,8 @@ export class PdvComponent implements OnInit {
   }
 
   addProduct(): void {
-    console.debug('[PDV] Tentando adicionar produto:', { selectedProductId: this.selectedProductId, quantity: this.quantity, availableProducts: this.products.length });
     const product = this.products.find((item) => item.id === Number(this.selectedProductId));
-    if (!product || this.quantity < 1) {
-      console.warn('[PDV] Produto não adicionado. Produto encontrado:', !!product);
-      return;
-    }
+    if (!product || this.quantity < 1) return;
     const existing = this.cart.find((item) => item.product.id === product.id);
     if (existing) existing.quantity += this.quantity;
     else this.cart.push({ product, quantity: this.quantity });
@@ -94,10 +99,16 @@ export class PdvComponent implements OnInit {
     this.quantity = 1;
   }
 
-  removeProduct(productId: number): void { this.cart = this.cart.filter((item) => item.product.id !== productId); }
+  removeProduct(productId: number): void {
+    this.cart = this.cart.filter((item) => item.product.id !== productId);
+  }
 
-  get subtotal(): number { return this.cart.reduce((total, item) => total + item.product.preco * item.quantity, 0); }
-  get total(): number { return Math.max(0, this.subtotal - Number(this.discount || 0)); }
+  get subtotal(): number {
+    return this.cart.reduce((total, item) => total + item.product.preco * item.quantity, 0);
+  }
+  get total(): number {
+    return Math.max(0, this.subtotal - Number(this.discount || 0));
+  }
   get discountError(): string {
     const value = Number(this.discount || 0);
     if (value < 0) return 'O desconto não pode ser negativo.';
@@ -114,7 +125,9 @@ export class PdvComponent implements OnInit {
     }
     return '';
   }
-  get hasControlledProduct(): boolean { return this.cart.some((item) => item.product.sngpc); }
+  get hasControlledProduct(): boolean {
+    return this.cart.some((item) => item.product.sngpc);
+  }
 
   createSale(): void {
     if (!this.auth.currentUser() || !this.selectedPaymentId || this.cart.length === 0) {
@@ -147,8 +160,22 @@ export class PdvComponent implements OnInit {
     this.sales.criar(request).subscribe({
       next: (sale) => {
         console.info('[PDV] Venda criada:', sale);
-        this.sale = sale;
+
+        // 1. Abre o modal com a venda criada
+        this.createdSaleModal = sale;
         this.message = `Venda #${sale.id} criada como pendente.`;
+
+        // 2. Limpa os dados da tela imediatamente para a próxima venda
+        this.cart = [];
+        this.selectedProductId = null;
+        this.quantity = 1;
+        this.selectedCustomerId = null;
+        this.selectedPaymentId = null;
+        this.selectedPharmacistId = null;
+        this.prescription = '';
+        this.discount = 0;
+        this.sale = null;
+
         this.submitting = false;
         this.changeDetector.detectChanges();
       },
@@ -156,15 +183,31 @@ export class PdvComponent implements OnInit {
     });
   }
 
-  finalizeSale(): void { if (this.sale) this.runSaleAction(this.sales.finalizar(this.sale.id), 'Venda finalizada com sucesso.'); }
-  cancelSale(): void { if (this.sale) this.runSaleAction(this.sales.cancelar(this.sale.id), 'Venda cancelada.'); }
+  // Ações do Modal
+  closeCreatedSaleModal(): void {
+    this.createdSaleModal = null;
+  }
+
+  modalFinalizeSale(): void {
+    if (!this.createdSaleModal) return;
+    this.runSaleAction(
+      this.sales.finalizar(this.createdSaleModal.id),
+      'Venda finalizada com sucesso.',
+    );
+    this.createdSaleModal = null;
+  }
+
+  modalCancelSale(): void {
+    if (!this.createdSaleModal) return;
+    this.runSaleAction(this.sales.cancelar(this.createdSaleModal.id), 'Venda cancelada.');
+    this.createdSaleModal = null;
+  }
 
   private runSaleAction(request: ReturnType<VendaService['finalizar']>, success: string): void {
     this.submitting = true;
     request.subscribe({
       next: (sale) => {
         console.info('[PDV] Operação de venda concluída:', sale);
-        this.sale = sale;
         this.message = success;
         this.submitting = false;
         this.changeDetector.detectChanges();
