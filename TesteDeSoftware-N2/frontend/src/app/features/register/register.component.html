@@ -1,0 +1,17 @@
+<main class="auth-page">
+  <section class="auth-intro"><div class="intro-top"><span class="brand-mark">+</span><span>Farmácia Central</span></div><div class="intro-copy"><p class="eyebrow">Nova conta</p><h1>Mais uma pessoa cuidando do balcão.</h1><p>Cadastre o acesso de um novo integrante da equipe.</p></div></section>
+  <section class="auth-panel"><div class="auth-card"><p class="eyebrow">Cadastro da equipe</p><h2>Criar acesso</h2><p class="muted">Depois do cadastro, você poderá entrar no sistema.</p>
+    @if (error) { <div class="alert error">{{ error }}</div> }
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-stack">
+      <label>Nome<input formControlName="nome" placeholder="Nome completo" /></label>
+      <label>E-mail<input type="email" formControlName="email" placeholder="voce@farmacia.com" /></label>
+      <label>Senha<input type="password" formControlName="senha" placeholder="Mínimo de 4 caracteres" /></label>
+      <label>CPF <span class="optional">opcional</span><input formControlName="cpf" placeholder="000.000.000-00" /></label>
+      <label>Função<select formControlName="cargo"><option value="OPERADOR_CAIXA">Operador de caixa</option><option value="FARMACEUTICO">Farmacêutico</option><option value="GERENTE">Gerente</option></select></label>
+      @if (form.controls.cargo.value === 'FARMACEUTICO') { <label>CRF<input formControlName="crf" placeholder="CRF-GO 00000" /></label> }
+      <button class="primary-button" type="submit" [disabled]="submitting">{{ submitting ? 'Cadastrando...' : 'Criar acesso' }}</button>
+    </form>
+    <div class="divider"><span>ou</span></div>
+    <a routerLink="/login" class="secondary-button back-button">Voltar para o login</a>
+  </div></section>
+</main>

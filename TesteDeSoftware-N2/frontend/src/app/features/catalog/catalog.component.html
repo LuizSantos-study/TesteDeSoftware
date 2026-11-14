@@ -1,0 +1,58 @@
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Consulta</p>
+    <h1>Catálogo</h1>
+    <p class="subtitle">Produtos e clientes disponíveis para o atendimento.</p>
+  </div><span class="read-only">Somente leitura</span>
+</header>@if (error) { <div class="alert">{{ error }}</div> } @if (loading) { <div class="loading">Carregando catálogo...</div> } @else { <section class="catalog-grid">
+  <div class="catalog-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Produtos</p>
+        <h2>{{ filteredProducts.length }} itens</h2>
+      </div><input [(ngModel)]="searchProduct" placeholder="Buscar produto" />
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Tipo</th>
+            <th>Preço</th>
+            <th>Controle</th>
+          </tr>
+        </thead>
+        <tbody>@for (product of filteredProducts; track product.id) { <tr>
+            <td><strong>{{ product.nome }}</strong><small>{{ product.principioAtivo }}</small></td>
+            <td>{{ product.tipo }}</td>
+            <td>{{ product.preco | currency:'BRL' }}</td>
+            <td>@if (product.sngpc) { <span class="tag controlled">Controlado</span> } @else { <span class="tag">Livre</span> }</td>
+          </tr> }</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="catalog-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Clientes</p>
+        <h2>{{ filteredCustomers.length }} cadastrados</h2>
+      </div><input [(ngModel)]="searchCustomer" placeholder="Buscar cliente" />
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>CPF</th>
+            <th>Plano</th>
+          </tr>
+        </thead>
+        <tbody>@for (customer of filteredCustomers; track customer.id) { <tr>
+            <td><strong>{{ customer.nome }}</strong><small>Nascimento: {{ customer.dataNasc | date:'dd/MM/yyyy' }}</small></td>
+            <td>{{ customer.cpf }}</td>
+            <td><span class="tag">{{ customer.plano }}</span></td>
+          </tr> }</tbody>
+      </table>
+    </div>
+  </div>
+</section>}

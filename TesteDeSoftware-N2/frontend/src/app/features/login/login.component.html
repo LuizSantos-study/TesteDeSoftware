@@ -1,0 +1,29 @@
+<main class="auth-page">
+  <section class="auth-intro">
+    <div class="intro-top"><span class="brand-mark">+</span><span>Farmácia Central</span></div>
+    <div class="intro-copy">
+      <p class="eyebrow">Operação segura, cuidado próximo</p>
+      <h1>O balcão no ritmo da sua equipe.</h1>
+      <p>Controle as vendas da farmácia com clareza, desde a primeira leitura do produto até a finalização.</p>
+    </div>
+    <div class="intro-note"><span>●</span> Ambiente de atendimento conectado</div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <p class="eyebrow">Acesso da equipe</p>
+      <h2>Entrar no sistema</h2>
+      <p class="muted">Use suas credenciais de funcionário para acessar o PDV.</p>
+      @if (error) { <div class="alert error">{{ error }}</div> }
+      @if (success) { <div class="alert success">{{ success }}</div> }
+      <form [formGroup]="form" (ngSubmit)="submit()" class="form-stack">
+        <label>E-mail<input type="email" formControlName="email" placeholder="voce@farmacia.com" autocomplete="email" /></label>
+        @if (form.controls.email.touched && form.controls.email.invalid) { <small class="field-error">Informe um e-mail válido.</small>}
+        <label>Senha<input type="password" formControlName="senha" placeholder="Digite sua senha" autocomplete="current-password" /></label>
+        <button class="primary-button" type="submit" [disabled]="submitting">{{ submitting ? 'Entrando...' : 'Entrar no PDV' }}</button>
+      </form>
+      <div class="divider"><span>ou</span></div>
+      <a routerLink="/cadastro" class="secondary-button">Cadastrar funcionário</a>
+    </div>
+  </section>
+</main>
