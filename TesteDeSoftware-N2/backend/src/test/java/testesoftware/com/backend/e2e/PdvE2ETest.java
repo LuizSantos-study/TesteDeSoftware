@@ -111,9 +111,12 @@ class PdvE2ETest {
         finalizarModalBtn.click();
 
         // Verifica a mensagem de sucesso na tela
-        WebElement alertSuccess = wait.until(
-            ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".alert.success"))
+        boolean finalizada = wait.until(
+            ExpectedConditions.textToBePresentInElementLocated(
+                By.cssSelector(".alert.success"),
+                "Venda finalizada com sucesso."
+            )
         );
-        assertTrue(alertSuccess.getText().contains("Venda finalizada com sucesso."));
+        assertTrue(finalizada);
     }
 }
