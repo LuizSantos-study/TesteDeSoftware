@@ -2,6 +2,13 @@
 
 API REST de um PDV (ponto de venda) de farmácia, feita com Spring Boot 4, Java 21, JPA/Hibernate e PostgreSQL.
 
+# integrantes 
+- Eduarda Corazza
+- Caio de Paula
+- Gabriella Pio
+- Luiz Gustavo 
+
+
 ## Como rodar
 
 ### Pré-requisitos
