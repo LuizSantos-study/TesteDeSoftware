@@ -1,0 +1,38 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/app/dashboard">
+      <span class="brand-mark">+</span>
+      <span>Farmácia<br /><strong>Central</strong></span>
+    </a>
+
+    <nav class="main-nav" aria-label="Navegação principal">
+      <p class="nav-section-label">Operação</p>
+      <a routerLink="/app/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-copy">Visão geral</span>
+      </a>
+      <a routerLink="/app/pdv" routerLinkActive="active">
+        <span class="nav-icon" aria-hidden="true">＋</span><span class="nav-copy">Nova venda</span><span class="nav-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <p class="nav-section-label secondary">Acompanhamento</p>
+      <a routerLink="/app/vendas" routerLinkActive="active">
+        <span class="nav-icon" aria-hidden="true">▤</span><span class="nav-copy">Vendas</span>
+      </a>
+      <a routerLink="/app/catalogo" routerLinkActive="active">
+        <span class="nav-icon" aria-hidden="true">⌕</span><span class="nav-copy">Catálogo</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar">{{ auth.currentUser()?.nome?.charAt(0) }}</span>
+        <span class="user-info"><strong>{{ auth.currentUser()?.nome }}</strong><small>{{ auth.currentUser()?.funcao }}</small></span>
+      </div>
+      <button class="logout-button" type="button" (click)="logout()"><span aria-hidden="true">↪</span><span>Sair da conta</span></button>
+    </div>
+  </aside>
+
+  <main class="content-area">
+    <router-outlet />
+  </main>
+</div>

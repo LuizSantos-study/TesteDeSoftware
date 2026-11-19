@@ -1,0 +1,153 @@
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Operação</p>
+    <h1>Nova venda</h1>
+    <p class="subtitle">Monte o pedido e finalize com segurança.</p>
+  </div>
+  <span class="operator">Operador: <strong>{{ auth.currentUser()?.nome }}</strong></span>
+</header>
+
+@if (error) { <div class="alert error">{{ error }}</div> }
+@if (message) { <div class="alert success">{{ message }}</div> }
+
+@if (loading) {
+<div class="loading">Carregando catálogo...</div>
+} @else {
+<section class="pdv-grid">
+  <div class="panel product-panel">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">01 / Produtos</p>
+        <h2>Adicionar ao carrinho</h2>
+      </div>
+    </div>
+    <div class="product-controls">
+      <label>Produto
+        <select [(ngModel)]="selectedProductId">
+          <option [ngValue]="null">Selecione um produto</option>
+          @for (product of products; track product.id) {
+          <option [ngValue]="product.id">{{ product.nome }} · {{ product.preco | currency:'BRL' }}</option>
+          }
+        </select>
+      </label>
+      <label class="quantity">Qtd.
+        <input type="number" min="1" [(ngModel)]="quantity" />
+      </label>
+      <button class="add-button" type="button" (click)="addProduct()">Adicionar</button>
+    </div>
+    <div class="product-hint">Os preços são sempre obtidos do cadastro do produto no backend.</div>
+  </div>
+
+  <aside class="panel sale-panel">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Resumo</p>
+        <h2>Carrinho</h2>
+      </div>
+      <span class="item-count">{{ cart.length }} itens</span>
+    </div>
+    @if (cart.length === 0) {
+    <div class="empty">Seu carrinho está vazio.<br /><span>Adicione um produto para começar.</span></div>
+    } @else {
+    <div class="cart-list">
+      @for (item of cart; track item.product.id) {
+      <div class="cart-item">
+        <div><strong>{{ item.product.nome }}</strong><small>{{ item.quantity }} × {{ item.product.preco | currency:'BRL' }}</small></div>
+        <div class="cart-price">
+          <strong>{{ item.product.preco * item.quantity | currency:'BRL' }}</strong>
+          <button type="button" (click)="removeProduct(item.product.id)" aria-label="Remover produto">×</button>
+        </div>
+      </div>
+      }
+    </div>
+    }
+    <div class="totals">
+      <div><span>Subtotal</span><strong>{{ subtotal | currency:'BRL' }}</strong></div>
+      <div class="discount-row">
+        <label for="discount">Desconto <small>valor fixo</small></label>
+        <div class="discount-field">
+          <span>R$</span>
+          <input id="discount" type="number" min="0" step="0.01" [max]="subtotal" [(ngModel)]="discount" [class.invalid]="discountError" aria-describedby="discount-help" />
+        </div>
+        <small id="discount-help" class="discount-help">Máximo: {{ subtotal | currency:'BRL' }}</small>
+        @if (discountError) { <small class="discount-error">{{ discountError }}</small> }
+      </div>
+      <div class="total-line"><span>Total</span><strong>{{ total | currency:'BRL' }}</strong></div>
+    </div>
+  </aside>
+</section>
+
+<section class="panel checkout-panel">
+  <div class="panel-heading">
+    <div>
+      <p class="eyebrow">02 / Finalização</p>
+      <h2>Dados da venda</h2>
+    </div>
+  </div>
+  <div class="checkout-fields">
+    <label>Cliente <span>(opcional)</span>
+      <select [(ngModel)]="selectedCustomerId">
+        <option [ngValue]="null">Consumidor não identificado</option>
+        @for (customer of customers; track customer.id) {
+        <option [ngValue]="customer.id">{{ customer.nome }} · {{ customer.cpf }}</option>
+        }
+      </select>
+    </label>
+    <label>Forma de pagamento
+      <select [(ngModel)]="selectedPaymentId">
+        <option [ngValue]="null">Selecione</option>
+        @for (payment of payments; track payment.id) {
+        <option [ngValue]="payment.id">{{ payment.descricao }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (electronicZeroTotalError) {
+  <div class="payment-warning"><strong>Total zero não pode usar POS/TEF</strong><span>{{ electronicZeroTotalError }}</span></div>
+  }
+
+  @if (hasControlledProduct) {
+  <div class="controlled-box">
+    <div><strong>Medicamento controlado identificado</strong>
+      <p>Informe a receita e o farmacêutico responsável antes de criar a venda.</p>
+    </div>
+    <label>Receita<input [(ngModel)]="prescription" placeholder="Número da receita" /></label>
+    <label>Farmacêutico
+      <select [(ngModel)]="selectedPharmacistId">
+        <option [ngValue]="null">Selecione</option>
+        @for (pharmacist of pharmacists; track pharmacist.id) {
+        <option [ngValue]="pharmacist.id">{{ pharmacist.nome }}</option>
+        }
+      </select>
+    </label>
+  </div>
+  }
+
+  <div class="checkout-actions">
+    <button class="primary-button" type="button" [disabled]="submitting || cart.length === 0 || discountError || electronicZeroTotalError" (click)="createSale()">
+      {{ submitting ? 'Processando...' : 'Criar venda pendente' }}
+    </button>
+  </div>
+</section>
+}
+
+<!-- Modal de Venda Criada com botão "×" no topo direito -->
+@if (createdSaleModal) {
+<div class="modal-backdrop" role="presentation" (click)="closeCreatedSaleModal()" (keydown.escape)="closeCreatedSaleModal()">
+  <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="created-sale-title" (click)="$event.stopPropagation()">
+    <button class="modal-close" type="button" (click)="closeCreatedSaleModal()" aria-label="Fechar modal">×</button>
+    <div class="modal-mark" aria-hidden="true">✓</div>
+    <p class="eyebrow">Operação concluída</p>
+    <h2 id="created-sale-title">Venda #{{ createdSaleModal.id }} criada!</h2>
+    <p class="modal-copy">
+      Total: <strong>{{ createdSaleModal.valorTotal | currency:'BRL' }}</strong><br>
+      O que você deseja fazer com esta venda agora?
+    </p>
+    <div class="modal-actions">
+      <button class="modal-button destructive" type="button" [disabled]="submitting" (click)="modalCancelSale()">Cancelar venda</button>
+      <button class="modal-button primary" type="button" [disabled]="submitting" (click)="modalFinalizeSale()">Finalizar venda</button>
+    </div>
+  </section>
+</div>
+}

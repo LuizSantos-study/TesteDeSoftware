@@ -1,0 +1,70 @@
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Acompanhamento</p>
+    <h1>Vendas</h1>
+    <p class="subtitle">Histórico e status das operações do balcão.</p>
+  </div>
+  <a class="primary-button" routerLink="/app/pdv">+ Nova venda</a>
+</header>
+
+@if (error) { <div class="alert">{{ error }}</div> }
+
+<section class="sales-panel">
+  <div class="filters">
+    <button type="button" [class.active]="filter === 'TODAS'" (click)="filter = 'TODAS'">Todas</button>
+    <button type="button" [class.active]="filter === 'PENDENTE'" (click)="filter = 'PENDENTE'">Pendentes</button>
+    <button type="button" [class.active]="filter === 'FINALIZADA'" (click)="filter = 'FINALIZADA'">Finalizadas</button>
+    <button type="button" [class.active]="filter === 'CANCELADO'" (click)="filter = 'CANCELADO'">Canceladas</button>
+  </div>
+
+  @if (loading) {
+    <div class="loading">Carregando vendas...</div>
+  } @else if (filteredSales.length === 0) {
+    <div class="empty"><strong>Nenhuma venda encontrada</strong><span>As operações aparecerão aqui.</span></div>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Venda</th><th>Data</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          @for (sale of filteredSales; track sale.id) {
+            <tr>
+              <td><strong>#{{ sale.id }}</strong></td>
+              <td>{{ sale.dataHora | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ sale.clienteNome || 'Consumidor não identificado' }}</td>
+              <td>{{ sale.formaPagamentoDescricao }}</td>
+              <td><span class="status" [class.pending]="sale.status === 'PENDENTE'" [class.done]="sale.status === 'FINALIZADA'" [class.cancelled]="sale.status === 'CANCELADO'">{{ sale.status }}</span></td>
+              <td><strong>{{ sale.valorTotal | currency:'BRL' }}</strong></td>
+              <td>
+                @if (sale.status === 'PENDENTE') {
+                  <div class="row-actions">
+                    <button class="action-button finalize" type="button" [disabled]="processingSaleId === sale.id" (click)="finalizeSale(sale)">{{ processingSaleId === sale.id ? 'Processando...' : 'Finalizar' }}</button>
+                    <button class="action-button cancel" type="button" [disabled]="processingSaleId === sale.id" (click)="cancelSale(sale)">Cancelar</button>
+                  </div>
+                } @else {
+                  <span class="no-action">Sem ações</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+@if (confirmingSale) {
+  <div class="modal-backdrop" role="presentation" (click)="closeCancelModal()" (keydown.escape)="closeCancelModal()">
+    <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-title" (click)="$event.stopPropagation()">
+      <div class="modal-mark" aria-hidden="true">!</div>
+      <p class="eyebrow">Atenção</p>
+      <h2 id="cancel-title">Cancelar venda #{{ confirmingSale.id }}?</h2>
+      <p class="modal-copy">A venda continuará registrada no histórico, mas não poderá ser finalizada depois.</p>
+      <div class="modal-actions">
+        <button class="modal-button secondary" type="button" (click)="closeCancelModal()">Voltar</button>
+        <button class="modal-button destructive" type="button" (click)="confirmCancel()">Confirmar cancelamento</button>
+      </div>
+    </section>
+  </div>
+}
